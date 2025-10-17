@@ -1,0 +1,10 @@
+{
+  "users": [
+    {
+      "name": "Administrador",
+      "email": "admin@lebush.local",
+      "passwordHash": "$2b$10$W1tiwQzPUHn/EQSjNUK1U.TQ1j4HHp1ejDUBsjhT4WvsM3oVrnmIS",
+      "role": "admin"
+    }
+  ]
+}

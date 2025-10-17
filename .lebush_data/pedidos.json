@@ -1,0 +1,45 @@
+{
+  "pedidos": [
+    {
+      "customer": "Andres Tuchez",
+      "phone": "36257312",
+      "references": "Municipalidad",
+      "deliveryDate": "2025-11-02",
+      "notes": "Camisas para regalar, Alcalde.",
+      "deposit": 420,
+      "status": "PorHacer",
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "priceBySize": {
+        "S": 45,
+        "M": 45,
+        "L": 45,
+        "XL": 50
+      },
+      "items": [
+        {
+          "id": "eg7ibfs",
+          "garment": "Camisa",
+          "fabric": "Durazno",
+          "color": "Azul",
+          "quantities": {
+            "S": 2,
+            "M": 2,
+            "L": 2,
+            "XL": 3
+          }
+        }
+      ],
+      "total": 420,
+      "imageUrl": "/uploads/1760732836971_712x48l.png",
+      "estadoPago": "Pagado",
+      "id": "0w8y5k7",
+      "owner": "admin@lebush.local",
+      "createdAt": "2025-10-17T20:27:16.993Z"
+    }
+  ]
+}
