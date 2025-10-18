@@ -103,7 +103,7 @@ const usuario = await Usuario.findOne({
 
     res.json({
       mensaje: "Login exitoso",
-      usuario: { nombre: usuario.nombre, rol: usuario.rol, email: usuario.email },
+      usuario: { nombre: usuario.nombre, rol: usuario.rol, correo: usuario.correo },
     });
   } catch (error) {
     res.status(500).json({ mensaje: "Error al iniciar sesión", error });
