@@ -1,131 +1,201 @@
+import express from "express";
+import cors from "cors";
+import mongoose from "mongoose";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
+import bcrypt from "bcryptjs"; // ✅ reemplazo de bcrypt nativo
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
 
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs-extra';
-import jwt from 'jsonwebtoken';
-import bcrypt from "bcryptjs";
-import multer from 'multer';
+dotenv.config();
 
+// Configuración de entorno
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'lebush-secret';
 
+// Inicializa Express
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "dist"))); // para servir el frontend
 
-const PUBLIC_DIR = path.join(__dirname, 'public');
-const UPLOADS_DIR = path.join(PUBLIC_DIR, 'uploads');
-const DATA_DIR = path.join(__dirname, '.lebush_data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-const PEDIDOS_FILE = path.join(DATA_DIR, 'pedidos.json');
+// ✅ Conexión a MongoDB Atlas
+const mongoURI =
+  process.env.MONGODB_URI ||
+  "mongodb+srv://admin:Lebush2025@cluster0.ndrrpj5.mongodb.net/?retryWrites=true&w=majority";
 
-await fs.ensureDir(PUBLIC_DIR);
-await fs.ensureDir(UPLOADS_DIR);
-await fs.ensureDir(DATA_DIR);
-app.use('/uploads', express.static(UPLOADS_DIR));
+mongoose
+  .connect(mongoURI)
+  .then(() => console.log("✅ Conectado a MongoDB Atlas"))
+  .catch((err) => console.error("❌ Error al conectar a MongoDB:", err));
 
-// Inicial limpio: admin y pedidos vacíos
-async function initClean(){
-  const passwordHash = await bcrypt.hash('admin123', 10);
-  const admin = { name:'Administrador', email:'admin@lebush.local', passwordHash, role:'admin' };
-  await fs.writeJson(USERS_FILE, { users:[admin] }, { spaces:2 });
-  await fs.writeJson(PEDIDOS_FILE, { pedidos:[] }, { spaces:2 });
-  console.log('✅ Admin inicial: admin@lebush.local / admin123');
-}
-await initClean();
+// 📦 Esquema de usuarios (login)
+const userSchema = new mongoose.Schema({
+  nombre: String,
+  email: String,
+  password: String,
+  rol: { type: String, default: "usuario" },
+});
+const Usuario = mongoose.model("Usuario", userSchema);
 
-async function readJSON(f,def={}){ try{ if(!(await fs.pathExists(f))) await fs.writeJson(f,def,{spaces:2}); return await fs.readJson(f); } catch { return def; } }
-async function writeJSON(f,d){ await fs.writeJson(f,d,{spaces:2}); }
+// 📦 Esquema de pedidos
+const pedidoSchema = new mongoose.Schema({
+  cliente: String,
+  descripcion: String,
+  fecha: String,
+  entrega: String,
+  anticipo: Number,
+  estado: { type: String, default: "PorHacer" },
+  imagen: String,
+  tallas: [
+    {
+      talla: String,
+      cantidad: Number,
+      precioUnitario: Number,
+    },
+  ],
+  total: Number,
+  pagado: { type: Boolean, default: false },
+});
+const Pedido = mongoose.model("Pedido", pedidoSchema);
 
-function auth(req,res,next){ const h=req.headers.authorization||''; const t=h.startsWith('Bearer ')?h.slice(7):null; if(!t) return res.status(401).json({error:'No autorizado'}); try{ req.user=jwt.verify(t,JWT_SECRET); next(); }catch{ return res.status(401).json({error:'Token inválido'}); } }
-function adminOnly(req,res,next){ if(req.user?.role!=='admin') return res.status(403).json({error:'Solo admin'}); next(); }
-
+// 🧾 Configuración de subida de archivos (imágenes)
 const storage = multer.diskStorage({
-  destination: (_req,_file,cb)=>cb(null,UPLOADS_DIR),
-  filename: (_req,file,cb)=>{ const ext=path.extname(file.originalname)||'.jpg'; cb(null, Date.now()+'_'+Math.random().toString(36).slice(2,9)+ext); }
+  destination: (req, file, cb) => {
+    const uploadPath = "uploads/";
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
 });
 const upload = multer({ storage });
 
-app.post('/api/login', async (req,res)=>{
-  const { email, password } = req.body||{};
-  const data = await readJSON(USERS_FILE,{users:[]});
-  const u = data.users.find(x=>x.email===email);
-  if(!u) return res.status(401).json({error:'Usuario no encontrado'});
-  const ok = await bcrypt.compare(password||'', u.passwordHash||'');
-  if(!ok) return res.status(401).json({error:'Contraseña incorrecta'});
-  const token = jwt.sign({email:u.email,name:u.name,role:u.role}, JWT_SECRET, {expiresIn:'12h'});
-  res.json({ token, user:{ name:u.name, email:u.email, role:u.role } });
+// ✅ Ruta: registrar usuario (solo admin puede crear)
+app.post("/api/register", async (req, res) => {
+  try {
+    const { nombre, email, password, rol } = req.body;
+    const existe = await Usuario.findOne({ email });
+    if (existe) return res.status(400).json({ mensaje: "El usuario ya existe" });
+
+    const hashed = await bcrypt.hash(password, 10);
+    const nuevoUsuario = new Usuario({ nombre, email, password: hashed, rol });
+    await nuevoUsuario.save();
+    res.json({ mensaje: "Usuario creado exitosamente" });
+  } catch (error) {
+    res.status(500).json({ mensaje: "Error al registrar", error });
+  }
 });
 
-app.post('/api/users', auth, adminOnly, async (req,res)=>{
-  const { name, email, password, role } = req.body||{};
-  if(!name || !email || !password) return res.status(400).json({error:'Datos incompletos'});
-  const data = await readJSON(USERS_FILE,{users:[]});
-  if(data.users.some(u=>u.email===email)) return res.status(400).json({error:'Email ya existe'});
-  const passwordHash = await bcrypt.hash(password, 10);
-  data.users.push({ name, email, passwordHash, role: role==='admin' ? 'admin':'usuario' });
-  await writeJSON(USERS_FILE, data);
-  res.json({ ok:true });
+// ✅ Ruta: login
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const usuario = await Usuario.findOne({ email });
+    if (!usuario) return res.status(400).json({ mensaje: "Usuario no encontrado" });
+
+    const valido = await bcrypt.compare(password, usuario.password);
+    if (!valido) return res.status(400).json({ mensaje: "Contraseña incorrecta" });
+
+    res.json({
+      mensaje: "Login exitoso",
+      usuario: { nombre: usuario.nombre, rol: usuario.rol, email: usuario.email },
+    });
+  } catch (error) {
+    res.status(500).json({ mensaje: "Error al iniciar sesión", error });
+  }
 });
 
-app.get('/api/pedidos', auth, async (_req,res)=>{
-  const data = await readJSON(PEDIDOS_FILE,{pedidos:[]});
-  res.json(data);
+// ✅ Ruta: crear pedido
+app.post("/api/pedidos", upload.single("imagen"), async (req, res) => {
+  try {
+    const datos = req.body;
+    let imagen = null;
+
+    if (req.file) {
+      imagen = `/uploads/${req.file.filename}`;
+    }
+
+    // Calcular total automáticamente
+    const tallas = JSON.parse(datos.tallas || "[]");
+    const total = tallas.reduce(
+      (sum, t) => sum + t.cantidad * t.precioUnitario,
+      0
+    );
+
+    const nuevo = new Pedido({
+      ...datos,
+      tallas,
+      imagen,
+      total,
+      pagado: Number(datos.anticipo) >= total,
+    });
+
+    await nuevo.save();
+    res.json({ mensaje: "Pedido guardado exitosamente", pedido: nuevo });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: "Error al guardar el pedido", error });
+  }
 });
 
-app.post('/api/pedidos', auth, async (req,res)=>{
-  const p = req.body||{};
-  if(!p.customer) return res.status(400).json({error:'Pedido incompleto'});
-  const data = await readJSON(PEDIDOS_FILE,{pedidos:[]});
-  p.id = Math.random().toString(36).slice(2,9);
-  p.owner = req.user.email;
-  p.createdAt = new Date().toISOString();
-  data.pedidos.unshift(p);
-  await writeJSON(PEDIDOS_FILE, data);
-  res.json(p);
+// ✅ Ruta: obtener todos los pedidos
+app.get("/api/pedidos", async (req, res) => {
+  const pedidos = await Pedido.find();
+  res.json(pedidos);
 });
 
-app.patch('/api/pedidos/:id', auth, async (req,res)=>{
-  const { id } = req.params;
-  const updates = req.body||{};
-  const data = await readJSON(PEDIDOS_FILE,{pedidos:[]});
-  const i = data.pedidos.findIndex(x=>x.id===id);
-  if(i===-1) return res.status(404).json({error:'No encontrado'});
-  const isOwner = data.pedidos[i].owner===req.user.email;
-  const isAdmin = req.user.role==='admin';
-  if(!isOwner && !isAdmin) return res.status(403).json({error:'Sin permiso'});
-  data.pedidos[i] = { ...data.pedidos[i], ...updates };
-  await writeJSON(PEDIDOS_FILE, data);
-  res.json(data.pedidos[i]);
+// ✅ Ruta: editar pedido
+app.put("/api/pedidos/:id", upload.single("imagen"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const datos = req.body;
+    let imagen = datos.imagen;
+
+    if (req.file) {
+      imagen = `/uploads/${req.file.filename}`;
+    }
+
+    const tallas = JSON.parse(datos.tallas || "[]");
+    const total = tallas.reduce(
+      (sum, t) => sum + t.cantidad * t.precioUnitario,
+      0
+    );
+
+    const actualizado = await Pedido.findByIdAndUpdate(
+      id,
+      {
+        ...datos,
+        tallas,
+        imagen,
+        total,
+        pagado: Number(datos.anticipo) >= total,
+      },
+      { new: true }
+    );
+
+    res.json({ mensaje: "Pedido actualizado", pedido: actualizado });
+  } catch (error) {
+    res.status(500).json({ mensaje: "Error al editar pedido", error });
+  }
 });
 
-app.delete('/api/pedidos/:id', auth, async (req,res)=>{
-  const { id } = req.params;
-  const data = await readJSON(PEDIDOS_FILE,{pedidos:[]});
-  const i = data.pedidos.findIndex(x=>x.id===id);
-  if(i===-1) return res.status(404).json({error:'No encontrado'});
-  const isOwner = data.pedidos[i].owner===req.user.email;
-  const isAdmin = req.user.role==='admin';
-  if(!isOwner && !isAdmin) return res.status(403).json({error:'Sin permiso'});
-  data.pedidos.splice(i,1);
-  await writeJSON(PEDIDOS_FILE, data);
-  res.json({ ok:true });
+// ✅ Ruta: eliminar pedido
+app.delete("/api/pedidos/:id", async (req, res) => {
+  await Pedido.findByIdAndDelete(req.params.id);
+  res.json({ mensaje: "Pedido eliminado" });
 });
 
-app.post('/api/upload', auth, upload.single('image'), (req,res)=>{
-  if(!req.file) return res.status(400).json({error:'No file'});
-  res.json({ url:'/uploads/'+req.file.filename });
+// ✅ Para Render: servir el frontend (React) desde /dist
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
-const DIST_DIR = path.join(__dirname, 'dist');
-if(await fs.pathExists(DIST_DIR)){
-  app.use(express.static(DIST_DIR));
-  app.get('*', (_req,res)=>res.sendFile(path.join(DIST_DIR,'index.html')));
-}
+// 🚀 Iniciar servidor
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 LEBUSH ¡TeQueda!!! corriendo en puerto ${PORT}`);
+});
 
-app.listen(PORT, ()=>console.log('🚀 LEBUSH VFinal4 API en puerto '+PORT));
