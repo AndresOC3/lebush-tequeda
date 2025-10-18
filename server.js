@@ -88,25 +88,24 @@ app.post("/api/register", async (req, res) => {
     res.status(500).json({ mensaje: "Error al registrar", error });
   }
 });
-
-// ✅ Ruta: login
 // ✅ Ruta: login
 app.post("/api/login", async (req, res) => {
   try {
     const { correo, password } = req.body;
-    console.log("📩 Datos recibidos:", { correo, password });
+    console.log("📥 Datos recibidos:", req.body); // 👈 agrega esta
+    console.log("➡️ Correo recibido:", correo, "| Password:", password);
 
     const usuario = await Usuario.findOne({
       $or: [{ correo }, { email: correo }],
     });
 
-    console.log("👤 Usuario encontrado:", usuario);
+    console.log("👤 Usuario encontrado:", usuario); // 👈 confirma qué documento trae
 
     if (!usuario)
       return res.status(400).json({ mensaje: "Usuario no encontrado" });
 
     const valido = await bcrypt.compare(password, usuario.password);
-    console.log("🔐 Contraseña válida:", valido);
+    console.log("🔑 Contraseña válida:", valido);
 
     if (!valido)
       return res.status(400).json({ mensaje: "Contraseña incorrecta" });
@@ -120,7 +119,7 @@ app.post("/api/login", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("💥 Error al iniciar sesión:", error);
+    console.error("❌ Error en /api/login:", error);
     res.status(500).json({ mensaje: "Error al iniciar sesión", error });
   }
 });
