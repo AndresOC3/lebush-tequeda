@@ -92,35 +92,36 @@ app.post("/api/register", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   try {
     const { correo, password } = req.body;
-    console.log("📥 Datos recibidos:", req.body); // 👈 agrega esta
-    console.log("➡️ Correo recibido:", correo, "| Password:", password);
+    console.log("📩 Datos recibidos:", { correo, password });
 
     const usuario = await Usuario.findOne({
       $or: [{ correo }, { email: correo }],
     });
 
-    console.log("👤 Usuario encontrado:", usuario); // 👈 confirma qué documento trae
+    console.log("👤 Usuario encontrado:", usuario);
 
     if (!usuario)
       return res.status(400).json({ mensaje: "Usuario no encontrado" });
 
     const valido = await bcrypt.compare(password, usuario.password);
-    console.log("🔑 Contraseña válida:", valido);
+    console.log("🔐 Contraseña válida:", valido);
 
     if (!valido)
       return res.status(400).json({ mensaje: "Contraseña incorrecta" });
 
+    // ✅ Si la contraseña es correcta, devolvemos también un token dummy
     res.json({
       mensaje: "Login exitoso",
+      token: "dummy-token-" + Date.now(), // 🔑 token temporal para frontend
       usuario: {
         nombre: usuario.nombre,
         rol: usuario.rol,
         correo: usuario.correo,
       },
     });
-  } catch (error) {
-    console.error("❌ Error en /api/login:", error);
-    res.status(500).json({ mensaje: "Error al iniciar sesión", error });
+  } catch (err) {
+    console.error("❌ Error en /api/login:", err);
+    res.status(500).json({ mensaje: "Error interno del servidor" });
   }
 });
 // ✅ Ruta: crear pedido
