@@ -94,15 +94,20 @@ app.post("/api/register", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   try {
     const { correo, password } = req.body;
+    console.log("📩 Datos recibidos:", { correo, password });
 
     const usuario = await Usuario.findOne({
       $or: [{ correo }, { email: correo }],
     });
 
+    console.log("👤 Usuario encontrado:", usuario);
+
     if (!usuario)
       return res.status(400).json({ mensaje: "Usuario no encontrado" });
 
     const valido = await bcrypt.compare(password, usuario.password);
+    console.log("🔐 Contraseña válida:", valido);
+
     if (!valido)
       return res.status(400).json({ mensaje: "Contraseña incorrecta" });
 
@@ -115,7 +120,7 @@ app.post("/api/login", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("💥 Error al iniciar sesión:", error);
     res.status(500).json({ mensaje: "Error al iniciar sesión", error });
   }
 });
