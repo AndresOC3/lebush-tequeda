@@ -76,12 +76,12 @@ const upload = multer({ storage });
 // ✅ Ruta: registrar usuario (solo admin puede crear)
 app.post("/api/register", async (req, res) => {
   try {
-    const { nombre, email, password, rol } = req.body;
+    const { nombre, correo, password, rol } = req.body;
     const existe = await Usuario.findOne({ email });
     if (existe) return res.status(400).json({ mensaje: "El usuario ya existe" });
 
     const hashed = await bcrypt.hash(password, 10);
-    const nuevoUsuario = new Usuario({ nombre, email, password: hashed, rol });
+    const nuevoUsuario = new Usuario({ nombre, correo, password: hashed, rol });
     await nuevoUsuario.save();
     res.json({ mensaje: "Usuario creado exitosamente" });
   } catch (error) {
@@ -93,26 +93,32 @@ app.post("/api/register", async (req, res) => {
 // ✅ Ruta: login
 app.post("/api/login", async (req, res) => {
   try {
-    const { correo, email, password } = req.body;
+    const { correo, password } = req.body;
+
     const usuario = await Usuario.findOne({
-      $or: [{ correo }, { email }],
+      $or: [{ correo }, { email: correo }],
     });
 
-    if (!usuario) return res.status(400).json({ mensaje: "Usuario no encontrado" });
+    if (!usuario)
+      return res.status(400).json({ mensaje: "Usuario no encontrado" });
 
     const valido = await bcrypt.compare(password, usuario.password);
-    if (!valido) return res.status(400).json({ mensaje: "Contraseña incorrecta" });
+    if (!valido)
+      return res.status(400).json({ mensaje: "Contraseña incorrecta" });
 
     res.json({
       mensaje: "Login exitoso",
-      usuario: { nombre: usuario.nombre, rol: usuario.rol, correo: usuario.correo },
+      usuario: {
+        nombre: usuario.nombre,
+        rol: usuario.rol,
+        correo: usuario.correo,
+      },
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ mensaje: "Error al iniciar sesión", error });
   }
 });
-
 // ✅ Ruta: crear pedido
 app.post("/api/pedidos", upload.single("imagen"), async (req, res) => {
   try {
