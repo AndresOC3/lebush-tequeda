@@ -4,12 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "node ./node_modules/vite/bin/vite.js build",
-  "preview": "node ./node_modules/vite/bin/vite.js preview",
-  "start": "node server.js"
-}
-
+    "dev": "vite",
+    "build": "node ./node_modules/vite/bin/vite.js build",
+    "preview": "node ./node_modules/vite/bin/vite.js preview",
+    "start": "node server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
