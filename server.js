@@ -90,12 +90,14 @@ app.post("/api/register", async (req, res) => {
 });
 
 // ✅ Ruta: login
+// ✅ Ruta: login
 app.post("/api/login", async (req, res) => {
   try {
     const { correo, email, password } = req.body;
-const usuario = await Usuario.findOne({
-  $or: [{ correo }, { email }],
-});
+    const usuario = await Usuario.findOne({
+      $or: [{ correo }, { email }],
+    });
+
     if (!usuario) return res.status(400).json({ mensaje: "Usuario no encontrado" });
 
     const valido = await bcrypt.compare(password, usuario.password);
@@ -106,6 +108,7 @@ const usuario = await Usuario.findOne({
       usuario: { nombre: usuario.nombre, rol: usuario.rol, correo: usuario.correo },
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ mensaje: "Error al iniciar sesión", error });
   }
 });
