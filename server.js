@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs-extra';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import bcrypt from "bcryptjs";
 import multer from 'multer';
 
 const __filename = fileURLToPath(import.meta.url);
