@@ -12,7 +12,6 @@ const API = {
       }),
     });
 
-    // Muestra la respuesta completa en consola
     const data = await r.json();
     console.log("🔍 Respuesta del servidor:", data);
 
@@ -22,8 +21,34 @@ const API = {
 
     return data;
   },
+
+  async register(u, t) {
+    const r = await fetch("/api/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + t,
+      },
+      body: JSON.stringify(u),
+    });
+    if (!r.ok) throw new Error("No se pudo crear");
+    return r.json();
+  },
+
+  async meFetch(u, o = {}) {
+    const t = localStorage.getItem("token");
+    const h = Object.assign(
+      {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + t,
+      },
+      o.headers || {}
+    );
+    const r = await fetch(u, { ...o, headers: h });
+    if (r.status === 401) throw new Error("No autorizado");
+    return r;
+  },
 };
-async register(u,t){const r=await fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify(u)});if(!r.ok)throw new Error("No se pudo crear");return r.json();},async meFetch(u,o={}){const t=localStorage.getItem("token");const h=Object.assign({"Content-Type":"application/json",Authorization:"Bearer "+t},o.headers||{});const r=await fetch(u,{...o,headers:h});if(r.status===401)throw new Error("No autorizado");return r;}};
 const STATES=["PorHacer","Iniciado","Finalizado","Entregado"];const DOT={PorHacer:"d-por",Iniciado:"d-ini",Finalizado:"d-fin",Entregado:"d-ent"};const uid=()=>Math.random().toString(36).slice(2,9);
 export default function App(){
   const [user,setUser]=useState(()=>JSON.parse(localStorage.getItem("user")||"null"));
