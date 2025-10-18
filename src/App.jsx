@@ -1,10 +1,29 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
-const API={async login(e,p){const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body: JSON.stringify({
-  correo: e,  
-  password: p
-})});if(!r.ok)throw new Error("Credenciales incorrectas");return r.json();},async register(u,t){const r=await fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify(u)});if(!r.ok)throw new Error("No se pudo crear");return r.json();},async meFetch(u,o={}){const t=localStorage.getItem("token");const h=Object.assign({"Content-Type":"application/json",Authorization:"Bearer "+t},o.headers||{});const r=await fetch(u,{...o,headers:h});if(r.status===401)throw new Error("No autorizado");return r;}};
+const API = {
+  async login(e, p) {
+    const r = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        correo: e,
+        password: p
+      }),
+    });
+
+    // Muestra la respuesta completa en consola
+    const data = await r.json();
+    console.log("🔍 Respuesta del servidor:", data);
+
+    if (!r.ok || data.mensaje !== "Login exitoso") {
+      throw new Error(data.mensaje || "Credenciales incorrectas");
+    }
+
+    return data;
+  },
+};
+async register(u,t){const r=await fetch("/api/users",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify(u)});if(!r.ok)throw new Error("No se pudo crear");return r.json();},async meFetch(u,o={}){const t=localStorage.getItem("token");const h=Object.assign({"Content-Type":"application/json",Authorization:"Bearer "+t},o.headers||{});const r=await fetch(u,{...o,headers:h});if(r.status===401)throw new Error("No autorizado");return r;}};
 const STATES=["PorHacer","Iniciado","Finalizado","Entregado"];const DOT={PorHacer:"d-por",Iniciado:"d-ini",Finalizado:"d-fin",Entregado:"d-ent"};const uid=()=>Math.random().toString(36).slice(2,9);
 export default function App(){
   const [user,setUser]=useState(()=>JSON.parse(localStorage.getItem("user")||"null"));
