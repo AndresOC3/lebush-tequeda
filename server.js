@@ -33,7 +33,7 @@ mongoose
 // 📦 Esquema de usuarios (login)
 const userSchema = new mongoose.Schema({
   nombre: String,
-  email: String,
+  correo: String, // 👈 cambia de 'email' a 'correo'
   password: String,
   rol: { type: String, default: "usuario" },
 });
@@ -92,8 +92,10 @@ app.post("/api/register", async (req, res) => {
 // ✅ Ruta: login
 app.post("/api/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const usuario = await Usuario.findOne({ email });
+    const { correo, email, password } = req.body;
+const usuario = await Usuario.findOne({
+  $or: [{ correo }, { email }],
+});
     if (!usuario) return res.status(400).json({ mensaje: "Usuario no encontrado" });
 
     const valido = await bcrypt.compare(password, usuario.password);
