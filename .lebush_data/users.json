@@ -3,7 +3,7 @@
     {
       "name": "Administrador",
       "correo": "admin@lebush.local",
-      "passwordHash": "$2a$10$T92KpLKNM02p6mA1cnT8gO3hLrTq1DExXjbmTBycpiV4p5X3I3VhO",
+      "passwordHash": "$2a$10$VvZ6NQ2ug9KFRm7ZVxOyaeF0lHYKuXG3G12IYoVjPkP0IDB0uJ0n2",
       "role": "admin"
     }
   ]
